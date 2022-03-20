@@ -1,311 +1,255 @@
 #!/usr/bin/env python3
 
+import subprocess
 import os
 import sys
-
-# BIN_DIR = "bin"
-# OBJ_DIR = "obj"
-
-# TARGETS_DIR = "targets"
+import json
 
 
-# ban_list = [".git", ".vscode", ".vs", OBJ_DIR, BIN_DIR, TARGETS_DIR]
-# LXX_FLAGS = [
-#     # "-fzalupa"
-# ]
-# CXX_FLAGS = [
-#     "-std=c++17",
-#     # "-fno-elide-constructors",
-#     "-DMISTAKE"
-#     ]
+DEFAULT_EXE_NAME = "a.out"
 
-# CXX = "g++"
+def is_source(filepath : str) -> bool:
+    return (filepath.endswith(".cpp") or filepath.endswith(".c"))
 
+def MakeObjFilename(filepath : str) -> str:
+    assert(is_source(filepath))
+    file_without_path = os.path.split(filepath)[-1]
+    return file_without_path[:file_without_path.rfind(".")] + ".o"
 
-# def get_dirs_rec(start_dir):
-#     ans = [start_dir]
-#     for subdir in os.listdir(start_dir):
-#         if (any(subdir == x for x in ban_list)):
-#             continue
-#         candidate = os.path.join(start_dir, subdir)
-#         if (os.path.isdir(candidate)):
-#             ans += get_dirs_rec(candidate)
-#     return ans
-
-# def get_src_rec(start_dir):
-#     ans = []
-#     for subdir in os.listdir(start_dir):
-#         if (any(subdir == x for x in ban_list)):
-#             continue
-#         candidate = os.path.join(start_dir, subdir)
-#         if (os.path.isdir(candidate)):
-#             ans += get_src_rec(candidate)
-#         elif (os.path.isfile(candidate)):
-#             if candidate.endswith(".cpp"):
-#                 ans.append(candidate[:candidate.rfind(".")])
-#     return ans
-
-# makefile_content = ""
-
-# def spawn_object_targets(sources):
-#     cnt = 0
-#     global makefile_content
-#     for cpp_file in sources:
-#         filename_without_path = os.path.join(OBJ_DIR, os.path.split(cpp_file)[-1])
-
-#         make_rule = subprocess.run([CXX, "-MM", "-MT", filename_without_path + ".o"] + cxx_include_argument + [cpp_file + ".cpp"], stdout=subprocess.PIPE).stdout.decode("utf-8")
-#         make_rule = make_rule.rstrip() + " Makefile"
-
-#         makefile_content += make_rule
-#         makefile_content += "\n\t"
-
-#         filename_without_path = os.path.split(cpp_file)[-1]
-#         makefile_content += CXX + " " + " ".join(cxx_include_argument) + " " + " ".join(CXX_FLAGS) + " -c " + cpp_file + ".cpp -o " + OBJ_DIR + "/" + filename_without_path + ".o\n\n"
-
-#         cnt += 1
-#         print(cnt, "of", len(sources))
+def run_dirs_rec(curdir, save_dirs = False, ban_list : list = []):
+    dirs = []
+    if (save_dirs):
+        dirs.append(curdir)
+    sources = []
+    for subdir in os.listdir(curdir):
+        candidate = os.path.join(curdir, subdir)
+        abs_candidate = os.path.abspath(candidate)
+        if (os.path.islink(candidate)):
+            continue
+        elif (os.path.isdir(candidate) and (abs_candidate not in ban_list)):
+            subdir_dirs, subdir_sources = run_dirs_rec(candidate, save_dirs, ban_list)
+            dirs += subdir_dirs
+            sources += subdir_sources
+        elif (os.path.isfile(candidate) and (abs_candidate not in ban_list) and is_source(candidate)):
+            sources.append(candidate)
+    return dirs, sources
 
 
-
-# if not os.path.exists(OBJ_DIR):
-#     os.mkdir(OBJ_DIR)
-
-# if not os.path.exists(BIN_DIR):
-#     os.mkdir(BIN_DIR)
-
-
-# print("getting directories...")
-# dirs = get_dirs_rec(os.path.curdir)
-# print("directories got")
-# print("creating g++ -I arguments")
-
-# # cxx_include_argument = " ".join("-I " + x for x in dirs)
-# cxx_include_argument = []
-# for dir in dirs:
-#     cxx_include_argument.append("-I")
-#     cxx_include_argument.append(dir)
-
-# print("arguments created")
-
-# # now lets find all .cpp files
-
-# print("finding .cpp files...")
-# srcs = get_src_rec(os.path.curdir)
-# print("list of .cpp files created")
-
-# # print(dirs)
-# # print(srcs)
-# # print(cxx_include_argument)
-
-
-
-# # spawn main targets
-
-# targets_list = []
-
-# makefile_content += "all: "
-
-# for file in os.listdir(os.path.join(os.path.curdir, "targets")):
-#     print("target file:", file)
-#     file_name_without_extension = file[:file.rfind(".")]
-#     target_file = os.path.join(os.path.curdir, "targets", file_name_without_extension)
-#     if (os.path.isfile(target_file + ".cpp")):
-#         out_filename = BIN_DIR + "/" + file_name_without_extension + ".out"
-#         makefile_content += out_filename + " "
-
-# makefile_content += "\n\n"
-
-# for file in os.listdir(os.path.join(os.path.curdir, "targets")):
-#     print("target file:", file)
-#     file_name_without_extension = file[:file.rfind(".")]
-#     target_file = os.path.join(os.path.curdir, "targets", file_name_without_extension)
-#     if (os.path.isfile(target_file + ".cpp")):
-#         targets_list.append(target_file)
-
-#         out_filename = BIN_DIR + "/" + file_name_without_extension + ".out"
-#         makefile_content += out_filename + ": Makefile "
-#         makefile_content += OBJ_DIR + "/" + file_name_without_extension + ".o "
-#         for cpp_file in srcs:
-#             filename_without_path = os.path.split(cpp_file)[-1]
-#             makefile_content += OBJ_DIR + "/" + filename_without_path
-#             makefile_content += ".o "
-
-#         # makefile_content += "\n\t" + CXX + " " + " ".join(LXX_FLAGS) + " -o "  + out_filename + " "
-#         makefile_content += "\n\t" + CXX + (" " + " ".join(LXX_FLAGS) if len(LXX_FLAGS) != 0 else "")+ " -o " + out_filename + " "
-
-#         makefile_content += OBJ_DIR + "/" + file_name_without_extension + ".o "
-
-#         for cpp_file in srcs:
-#             filename_without_path = os.path.split(cpp_file)[-1]
-#             makefile_content += OBJ_DIR + "/" + filename_without_path
-#             makefile_content += ".o "
-#         print("target spawned", file)
-#         makefile_content += "\n\n"
-
-# print("main target created")
-
-# srcs += targets_list
-
-# # spawn targets for object files
-
-# print("creating make targets for .o ...")
-
-# spawn_object_targets(srcs)
-
-# print("targets created")
-# print("writing to file")
-
-# f = open("Makefile", "w")
-# f.write(makefile_content)
-# f.close()
-
-# print("completed")
 
 class Configuration:
-    def __init__(self, include_dirs="", LFLAGS="", CFLAGS=""):
-        self._include_dirs = include_dirs
+    def __init__(self, IFLAGS="", LFLAGS="", CFLAGS=""):
+        self._include_dirs = []
+        self._prohibited_dirs = []
         self._LFLAGS = LFLAGS
         self._CFLAGS = CFLAGS
-        self._include_dirs_changed = False
+        self._IFLAGS = "NO"
+        self._CXX = "g++"
+        self._LXX = "g++"
+        self._OBJDIR = "obj"
+        self._iflags_changed = False
         self._lflags_changed = False
         self._cflags_changed = False
-
-    def SetIncludeDirs(self, s : str)-> None:
-        if (self._include_dirs_changed):
-            raise SyntaxError("double include dir option definition")
-        self._include_dirs_ = s
-        self._include_dirs_changed = True
+        self._objdir_changed = False
+        self._cxx_changed = False
+        self._lxx_changed = False
+        self._targets = {}
+        self._sources = []
     
     def SetLFLAGS(self, s : str) -> None:
         if (self._lflags_changed):
             raise SyntaxError("double lflags option definition")
         self._LFLAGS = s
         self._lflags_changed = True
-        print("new lflags")
-        print(s)
 
     def SetCFLAGS(self, s : str) -> None:
         if (self._cflags_changed):
             raise SyntaxError("double cflags option definition")
         self._CFLAGS = s
         self._cflags_changed = True
-        print("new cflags")
-        print(s)
-
-
-class TextIterator:
-    file_str = ""
-    rip = 0
-    def __init__(self, s : str):
-        self.file_str = s
     
-    def SkipSpaces(self) -> None:
-        while (self.rip < len(self.file_str) and self.file_str[self.rip] == " "):
-            self.rip += 1
-    
-    def SkipSpaceLike(self) -> None:
-        while (self.rip < len(self.file_str) and self.file_str[self.rip] in [" ", "\t", "\n"]):
-            self.rip += 1
+    def SetIFLAGS(self, s : str) -> None:
+        if (self._iflags_changed):
+            raise SyntaxError("double iflags option definition")
+        assert(s in KEYVALUES)
+        self._IFLAGS = s
+        self._iflags_changed = True
 
-    def Require(self, required : str):
-        self.SkipSpaces()
-        assert(self.file_str[self.rip : self.rip + len(required)] == required)
-        self.rip += len(required)
+    def SetCXX(self, s : str) -> None:
+        if (self._cxx_changed):
+            raise SyntaxError("double iflags option definition")
+        self._CXX = s
+        self._cxx_changed = True
 
-    def CheckIfNextIs(self, required : str) -> bool:
-        self.SkipSpaces()
-        if self.file_str[self.rip : self.rip + len(required)] == required:
-            self.rip += len(required)
-            return True
-        return False
+    def SetLXX(self, s : str) -> None:
+        if (self._lxx_changed):
+            raise SyntaxError("double iflags option definition")
+        self._LXX = s
+        self._lxx_changed = True
     
-    # find next s in text, return -1 if not found, else index
-    def FindNext(self, s : str) -> int:
-        ans = self.file_str[self.rip:].find(s)
-        if (ans == -1):
-            return -1
-        else:
-            return ans + self.rip
+    def SetOBJDIR(self, s : str) -> None:
+        if (self._objdir_changed):
+            raise SyntaxError("double iflags option definition")
+        self._OBJDIR = s
+        self._objdir_changed = True
+    
+    def AddTarget(self, source : str, out_name : str) -> None:
+        self._targets[source] = out_name
+    
+    def SetProhibitedDirs(self, dirs : list) -> None:
+        self._prohibited_dirs += dirs
+
+    def ParseFlags(self):
+        if (not self._objdir_changed):
+            if (not os.path.exists("obj")):
+                os.mkdir("obj")
+
+
+    def Search(self):
+        dirs, sources = run_dirs_rec(os.path.curdir, self._IFLAGS == "ALL", self._prohibited_dirs + list(self._targets.keys()))
+        if (self._IFLAGS == "ROOT"):
+            dirs.append(os.path.curdir)
+        self._include_dirs = dirs
+        self._sources = sources
+
+    def _WriteTargets(self, file):
+        if (len(self._targets) == 0):
+            self._targets[None] = DEFAULT_EXE_NAME
+        file.write("all: Makefile ")
+
+        # obj_targets = list(os.path.join(self._OBJDIR, MakeObjFilename(target)) for target in self._targets)
+        for target in self._targets:
+            if not (target is None):
+                file.write(self._targets[target] + " ")
+        
+        file.write("\n\n")
+
+        obj_sources = list(os.path.join(self._OBJDIR, MakeObjFilename(cpp_file)) for cpp_file in self._sources)
+        
+        # if it is just a string, then dependencies are all .obj
+        # if it is array or dict, for every .cpp target we need 
+
+        # yeah creating obj names too much so TODO: optimize obj names
+        # yeah i can just iterate using index and  so TODO: optimize obj names
+        for target in self._targets:
+            obj_target = ""
+            if not (target is None):
+                obj_target = os.path.join(self._OBJDIR, MakeObjFilename(target))
+            file.write(self._targets[target] + ": Makefile " + obj_target + " ")
+            for obj_source in obj_sources:
+                file.write(obj_source + " ")
+            file.write("\n\t")
+            file.write(self._LXX + " " + self._LFLAGS + " ")
+            for obj_source in obj_sources:
+                file.write(obj_source + " ")
+            file.write("-o " + self._targets[target] + "\n\n")
+                
+
+
+    def _WriteObj(self, file):
+        flags = list(filter(lambda x: len(x) > 0, self._CFLAGS.split()))
+        include_flags = []
+        for dir in self._include_dirs:
+            include_flags.append("-I")
+            include_flags.append(dir)
+        for cpp_file in self._sources:
+            obj_name = os.path.join(self._OBJDIR, MakeObjFilename(cpp_file))
+            make_rule = subprocess.run([self._CXX, "-MM", "-MT", obj_name] + include_flags + [cpp_file], stdout=subprocess.PIPE).stdout.decode("utf-8")
+            make_rule = make_rule.rstrip() + " Makefile\n\t"
+            file.write(make_rule)
+            file.write(self._CXX + " " + " ".join(include_flags) + " " + self._CFLAGS + " -c " + cpp_file + " -o " + obj_name + "\n\n")
+
+
+    def WriteMake(self):
+        f = open("Makefile", "w")
+        self._WriteTargets(f)
+        self._WriteObj(f)
+        f.close()
+
 
 def PrettifyStr(s : str) -> str:
     return " ".join((" ".join(s.strip().split("\n"))).split("\t"))
 
-# this function needs garanty that text + rip starts with the keyword
-def SetCFLAGS(text : TextIterator, config : Configuration) -> None:
-    text.Require("CFLAGS")
-    text.Require("=")
-    text.Require("{")
-    closing_index = text.FindNext("}")
-    if (closing_index == -1):
-        raise SyntaxError("Closing bracket not found [rip = " + str(text.rip) + "]")
-    flags = PrettifyStr(text.file_str[text.rip : closing_index])
-    config.SetCFLAGS(flags)
-    text.rip = closing_index + 1
-    text.SkipSpaceLike()
-    pass
+def SetCFLAGS(flag_value, config : Configuration) -> None:
+    assert(type(flag_value) == list)
+    config.SetCFLAGS(" ".join(map(PrettifyStr, flag_value)))
 
-# this function needs garanty that text + rip starts with the keyword
-def SetLFLAGS(text : TextIterator, config : Configuration) -> None:
-    text.Require("LFLAGS")
-    text.Require("=")
-    text.Require("{")
-    closing_index = text.FindNext("}")
-    if (closing_index == -1):
-        raise SyntaxError("Closing bracket not found [rip = " + str(text.rip) + "]")
-    flags = PrettifyStr(text.file_str[text.rip : closing_index])
-    config.SetLFLAGS(flags)
-    text.rip = closing_index + 1
-    text.SkipSpaceLike()
-    pass
+def SetLFLAGS(flag_value, config : Configuration) -> None:
+    assert(type(flag_value) == list)
+    config.SetLFLAGS(" ".join(map(PrettifyStr, flag_value)))
 
-# this function needs garanty that text + rip starts with the keyword
-def SetIFLAGS(text : TextIterator, config : Configuration) -> None:
-    pass
+def SetIFLAGS(flag_value, config : Configuration) -> None:
+    assert(flag_value in KEYVALUES)
+    config.SetIFLAGS(flag_value)
     
+def SetCXX(flag_value, config : Configuration) -> None:
+    config.SetCXX(flag_value)
+
+def SetLXX(flag_value, config : Configuration) -> None:
+    config.SetLXX(flag_value)
+
+def SetOBJDIR(flag_value, config : Configuration) -> None:
+    config.SetOBJDIR(flag_value)
 
 KEYVARS = {
     "CFLAGS" : SetCFLAGS,
     "LFLAGS" : SetLFLAGS,
-    "IFLAGS" : SetIFLAGS
+    "IFLAGS" : SetIFLAGS,
+    "CXX"    : SetCXX,
+    "LXX"    : SetLXX,
+    "OBJDIR" : SetOBJDIR
 }
 
-KEYVALUES = [
-    "ALL",
-    "ROOT",
-]
+KEYVALUES = {  # enum actually
+    "NO"   : 0,
+    "ALL"  : 1,
+    "ROOT" : 2
+}
 
-def ParsedTarget(text : TextIterator) -> bool:
-    return False
+def ParseTargets(targets, config : Configuration) -> None:
+    # setting targets
+    if (type(targets) == list):
+        # only .cpp files mentioned
+        for target in targets:
+            out_name = target[:target.rfind(".")] + ".out"
+            config.AddTarget(target, out_name)
+    elif (type(targets) == dict):
+        # .cpp -> .out
+        for source, out_name in targets.items():
+            config.AddTarget(source, out_name)
+    elif (type(targets) == str):
+        # just one out file with specific name
+        config.AddTarget(None, targets)
 
-def ParsedKeyvars(text : TextIterator, config : Configuration) -> bool:
-    for keyvar, function in KEYVARS.items():
-        if (text.file_str[text.rip : text.rip + len(keyvar)] == keyvar):
-            function(text, config)
-            return True
-    return False
+def ParseFlags(flags : dict, config : Configuration) -> None:
+    none_func = lambda x, y: None
+    for flag in flags:
+        KEYVARS.get(flag, none_func)(flags[flag], config)
+
+def ParseProhibitedDirs(dirs : list, config : Configuration) -> None:
+    abs_dirs = list(map(os.path.abspath, dirs))
+    config.SetProhibitedDirs(abs_dirs)
 
 
-def ParseFile(file, config):
-    text = TextIterator(file.read())
-    rip = 0
-    while (text.rip < len(text.file_str)):
-        print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-        print(text.file_str[text.rip:])
-        if ParsedKeyvars(text, config):
-            continue
-        if ParsedTarget(text, config):
-            continue
+def ParseFile(json_dict : dict, config : Configuration):
+    if (json_dict.get("targets", -1) != -1):
+        ParseTargets(json_dict["targets"], config)
+    if (json_dict.get("flags", -1) != -1):
+        ParseFlags(json_dict["flags"], config)
+    if (json_dict.get("prohibited_dirs", -1) != -1):
+        ParseProhibitedDirs(json_dict["prohibited_dirs"], config)
+
 
 def FindAndParse(filename) -> Configuration:
     config = Configuration()
     if (os.path.exists(filename)):
-        file = open(filename, "r")
+        file = json.load(open(filename, "r"))
         ParseFile(file, config)
-    
     return config
 
 if __name__ == "__main__":
     if (len(sys.argv) > 1):
         os.chdir(sys.argv[1])
-    config = FindAndParse("create_make.txt")
-    # print(config.LFLAGS_)
+    config = FindAndParse("create_make.json")
+    config.ParseFlags()
+    config.Search()
+    config.WriteMake()

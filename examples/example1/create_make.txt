@@ -1,9 +1,0 @@
-LFLAGS  =   {a             
-
-    bbbb
-
-    c
-
-}
-
-CFLAGS  =   {d e f   }

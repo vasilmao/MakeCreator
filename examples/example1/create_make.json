@@ -1,0 +1,18 @@
+{
+    "targets" : {
+        "src/main.cpp" : "b.out"
+    },
+
+    "prohibited_dirs" : [
+        ".vscode",
+        ".git"
+    ],
+
+    "flags" : {
+        "IFLAGS" : "ROOT",
+        "CFLAGS" : [
+            "-DKEK -Wall",
+            "-Werror"
+        ]
+    }
+}
