@@ -128,8 +128,6 @@ class Configuration:
         # if it is just a string, then dependencies are all .obj
         # if it is array or dict, for every .cpp target we need 
 
-        # yeah creating obj names too much so TODO: optimize obj names
-        # yeah i can just iterate using index and  so TODO: optimize obj names
         for target in self._targets:
             obj_target = ""
             if not (target is None):
