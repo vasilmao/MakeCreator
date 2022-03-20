@@ -105,7 +105,8 @@ class Configuration:
 
 
     def Search(self):
-        dirs, sources = run_dirs_rec(os.path.curdir, self._IFLAGS == "ALL", self._prohibited_dirs + list(self._targets.keys()))
+        print(list(self._targets.keys()))
+        dirs, sources = run_dirs_rec(os.path.curdir, self._IFLAGS == "ALL", self._prohibited_dirs + list(map(os.path.abspath ,filter(lambda x: not(x is None) ,self._targets.keys()))))
         if (self._IFLAGS == "ROOT"):
             dirs.append(os.path.curdir)
         self._include_dirs = dirs
@@ -116,7 +117,6 @@ class Configuration:
             self._targets[None] = DEFAULT_EXE_NAME
         file.write("all: Makefile ")
 
-        # obj_targets = list(os.path.join(self._OBJDIR, MakeObjFilename(target)) for target in self._targets)
         for target in self._targets:
             if not (target is None):
                 file.write(self._targets[target] + " ")
@@ -136,7 +136,7 @@ class Configuration:
             for obj_source in obj_sources:
                 file.write(obj_source + " ")
             file.write("\n\t")
-            file.write(self._LXX + " " + self._LFLAGS + " ")
+            file.write(self._LXX + " " + self._LFLAGS + " " + obj_target + " ")
             for obj_source in obj_sources:
                 file.write(obj_source + " ")
             file.write("-o " + self._targets[target] + "\n\n")
@@ -149,7 +149,8 @@ class Configuration:
         for dir in self._include_dirs:
             include_flags.append("-I")
             include_flags.append(dir)
-        for cpp_file in self._sources:
+        for cpp_file in self._sources + list(filter(lambda x: not(x is None) ,self._targets.keys())):
+            print(cpp_file)
             obj_name = os.path.join(self._OBJDIR, MakeObjFilename(cpp_file))
             make_rule = subprocess.run([self._CXX, "-MM", "-MT", obj_name] + include_flags + [cpp_file], stdout=subprocess.PIPE).stdout.decode("utf-8")
             make_rule = make_rule.rstrip() + " Makefile\n\t"
