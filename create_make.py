@@ -209,7 +209,8 @@ def ParseTargets(targets, config : Configuration) -> None:
     if (type(targets) == list):
         # only .cpp files mentioned
         for target in targets:
-            out_name = target[:target.rfind(".")] + ".out"
+            target_filename = os.path.split(target)[-1]
+            out_name = target_filename[:target_filename.rfind(".")] + ".out"
             config.AddTarget(target, out_name)
     elif (type(targets) == dict):
         # .cpp -> .out
