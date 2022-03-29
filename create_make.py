@@ -118,8 +118,7 @@ class Configuration:
         file.write("all: Makefile ")
 
         for target in self._targets:
-            if not (target is None):
-                file.write(self._targets[target] + " ")
+            file.write(self._targets[target] + " ")
         
         file.write("\n\n")
 
