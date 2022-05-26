@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# github.com/vasilmao/MakeCreator
+
 import subprocess
 import os
 import sys
@@ -135,10 +137,13 @@ class Configuration:
             for obj_source in obj_sources:
                 file.write(obj_source + " ")
             file.write("\n\t")
-            file.write(self._LXX + " " + self._LFLAGS + " " + obj_target + " ")
+            file.write(self._LXX + " " + obj_target + " ")
             for obj_source in obj_sources:
                 file.write(obj_source + " ")
-            file.write("-o " + self._targets[target] + "\n\n")
+            file.write(" -o " + self._targets[target])
+            file.write(" ")
+            file.write(self._LFLAGS)
+            file.write("\n\n")
                 
 
 
